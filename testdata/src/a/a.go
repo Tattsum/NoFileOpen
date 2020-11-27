@@ -1,7 +1,15 @@
 package a
 
+import (
+	"os"
+	os2 "os"
+)
+
 func f() {
-	// The pattern can be written in regular expression.
-	var gopher int // want "pattern"
-	print(gopher)  // want "identifyer is gopher"
+	_, _ = os.OpenFile("fileName", os.O_CREATE,0666) // want "NG"
+	_, _ = os.Create("fileName") // OK
+
+	_, _ = os2.OpenFile("fileName", os.O_CREATE,0666) // want "NG"
+	_, _ = os2.Create("fileName") // OK
+
 }

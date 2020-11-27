@@ -1,8 +1,9 @@
 package NoFileOpen
 
 import (
+	"fmt"
 	"go/ast"
-
+	"go/types"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -20,21 +21,22 @@ var Analyzer = &analysis.Analyzer{
 	},
 }
 
-func run(pass *analysis.Pass) (interface{}, error) {
-	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+var ospkg *types.Package
 
-	nodeFilter := []ast.Node{
-		(*ast.Ident)(nil),
+func run(pass *analysis.Pass) (interface{}, error) {
+	for _, pkg := range pass.Pkg.Imports() {
+		if pkg.Path() == "os" {
+			ospkg = pkg
+			fmt.Println(ospkg.Path())
+		}
 	}
 
-	inspect.Preorder(nodeFilter, func(n ast.Node) {
-		switch n := n.(type) {
-		case *ast.Ident:
-			if n.Name == "gopher" {
-				pass.Reportf(n.Pos(), "identifyer is gopher")
-			}
-		}
-	})
+	if ospkg == nil {
+		return nil, nil
+	}
+
+	
+
 
 	return nil, nil
 }
