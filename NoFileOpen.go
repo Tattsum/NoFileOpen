@@ -1,7 +1,6 @@
 package NoFileOpen
 
 import (
-	"fmt"
 	"go/ast"
 	"go/types"
 	"golang.org/x/tools/go/analysis"
@@ -27,7 +26,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	for _, pkg := range pass.Pkg.Imports() {
 		if pkg.Path() == "os" {
 			ospkg = pkg
-			fmt.Println(ospkg.Path())
 		}
 	}
 
@@ -35,7 +33,31 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		return nil, nil
 	}
 
-	
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	nodeFilter := []ast.Node{
+		(*ast.CallExpr)(nil),
+	}
+	inspect.Preorder(nodeFilter, func(n ast.Node){
+		switch n := n.(type) {
+		case *ast.CallExpr:
+
+			// check function is os.OpenFile
+			caller, ok := n.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return
+			}
+
+			if pass.TypesInfo.ObjectOf(caller.Sel).Pkg() != ospkg {
+				return
+			}
+
+			if caller.Sel.Name != "OpenFile" {
+				return
+			}
+
+			pass.Reportf(caller.Pos(), "NG")
+		}
+	})
 
 
 	return nil, nil
