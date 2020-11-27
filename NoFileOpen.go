@@ -8,7 +8,7 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-const doc = "NoFileOpen is ..."
+const doc = "NoFileOpen checks bad used os.FileOpen"
 
 // Analyzer is ...
 var Analyzer = &analysis.Analyzer{
@@ -55,7 +55,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return
 			}
 
-			pass.Reportf(caller.Pos(), "NG")
+			pass.Reportf(caller.Pos(), "don't use os.OpenFile. Use os.Create")
 		}
 	})
 
