@@ -2,13 +2,13 @@ package NoFileOpen
 
 import (
 	"go/ast"
-
+	"go/types"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-const doc = "NoFileOpen is ..."
+const doc = "NoFileOpen checks bad used os.FileOpen"
 
 // Analyzer is ...
 var Analyzer = &analysis.Analyzer{
@@ -20,21 +20,45 @@ var Analyzer = &analysis.Analyzer{
 	},
 }
 
-func run(pass *analysis.Pass) (interface{}, error) {
-	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+var ospkg *types.Package
 
-	nodeFilter := []ast.Node{
-		(*ast.Ident)(nil),
+func run(pass *analysis.Pass) (interface{}, error) {
+	for _, pkg := range pass.Pkg.Imports() {
+		if pkg.Path() == "os" {
+			ospkg = pkg
+		}
 	}
 
-	inspect.Preorder(nodeFilter, func(n ast.Node) {
+	if ospkg == nil {
+		return nil, nil
+	}
+
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	nodeFilter := []ast.Node{
+		(*ast.CallExpr)(nil),
+	}
+	inspect.Preorder(nodeFilter, func(n ast.Node){
 		switch n := n.(type) {
-		case *ast.Ident:
-			if n.Name == "gopher" {
-				pass.Reportf(n.Pos(), "identifyer is gopher")
+		case *ast.CallExpr:
+
+			// check function is os.OpenFile
+			caller, ok := n.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return
 			}
+
+			if pass.TypesInfo.ObjectOf(caller.Sel).Pkg() != ospkg {
+				return
+			}
+
+			if caller.Sel.Name != "OpenFile" {
+				return
+			}
+
+			pass.Reportf(caller.Pos(), "don't use os.OpenFile. Use os.Create")
 		}
 	})
+
 
 	return nil, nil
 }
